@@ -131,4 +131,22 @@ resource "aws_security_group" "lambda_sg" {
   name        = "lambda_sg"
   description = "Security Group for Lambda function"
   vpc_id      = module.vpc.vpc_attributes.id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1" # Allow all protocols
+    cidr_blocks = ["0.0.0.0/0"] # Allow outbound to any destination
+  }
+
+}
+
+resource "aws_vpc_endpoint" "dynamodb" {
+  vpc_id       = module.vpc.vpc_attributes.id
+  service_name = "com.amazonaws.eu-north-1.dynamodb" # Adjust for your region
+  route_table_ids = [for az, rt in module.vpc.rt_attributes_by_type_by_az["private"] : rt.id]
+
+  tags = {
+    Name = "dynamodb-vpc-endpoint"
+  }
 }
