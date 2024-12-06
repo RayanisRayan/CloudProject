@@ -83,28 +83,54 @@
       type = "N"
     }
 
-    attribute {
-      name = "UserID"
-      type = "N"
-    }
-
-    tags = merge(aws_servicecatalogappregistry_application.cloud_project.application_tag, {
-      Name = "Sales Table"
-    })
-    global_secondary_index {
-      name            = "UserIDIndex"
-      hash_key        = "UserID" # The index will be on UserID
-      projection_type = "ALL"    # Include all attributes in the index
-      read_capacity  = 5
-      write_capacity = 5
-    }
+  attribute {
+    name = "UserID"
+    type = "S"
   }
 
-  data "archive_file" "SalesCollection" {
-    type        = "zip"
-    source_file = "SaleCollection.py" # Pointing to Python file in this directory
-    output_path = "SalesCollection_payload.zip"
+  tags = merge(aws_servicecatalogappregistry_application.cloud_project.application_tag, {
+    Name = "Sales Table"
+  })
+  global_secondary_index {
+    name            = "UserIDIndex"
+    hash_key        = "UserID" # The index will be on UserID
+    projection_type = "ALL"    # Include all attributes in the index
+    read_capacity  = 5
+    write_capacity = 5
   }
+}
+
+resource "aws_dynamodb_table" "UsersTable" {
+  name         = "UsersTable"
+  hash_key     = "UserID"
+  billing_mode = "PAY_PER_REQUEST"
+
+  attribute {
+    name = "UserID"
+    type = "S"
+  }
+
+  tags = merge(aws_servicecatalogappregistry_application.cloud_project.application_tag, {
+    Name = "User Table"
+  })
+
+}
+
+data "archive_file" "SalesCollection" {
+  type        = "zip"
+  source_file = "SaleCollection.py" # Pointing to Python file in this directory
+  output_path = "SalesCollection_payload.zip"
+}
+data "archive_file" "post_confirmation" {
+  type        = "zip"
+  source_file = "PostConfirmationLambda.py" # Pointing to Python file in this directory
+  output_path = "post_confirmation.zip"
+}
+data "archive_file" "PreSignUp" {
+  type        = "zip"
+  source_file = "PreSignUpLambda.py" # Pointing to Python file in this directory
+  output_path = "pre_sign_up.zip"
+}
 
   resource "aws_lambda_function" "SalesCollection" {
     filename      = "SalesCollection_payload.zip"
@@ -157,6 +183,25 @@
       Name = "dynamodb-vpc-endpoint"
     }
   }
+
+resource "aws_lambda_function" "pre_sign_up" {
+  function_name = "PreSignUpLambda"
+  runtime       = "python3.12"
+  handler       = "pre_signup.lambda_handler"
+  role          = aws_iam_role.lambda_exec.arn
+  filename      = "pre_sign_up.zip"  # Path to the Lambda zip file
+
+  source_code_hash = data.archive_file.PreSignUp.output_base64sha256
+}
+resource "aws_lambda_function" "post_confirmation" {
+  function_name = "PostConfirmationLambda"
+  runtime       = "python3.12"
+  handler       = "post_confirmation.lambda_handler"
+  role          = aws_iam_role.lambda_exec.arn
+  filename      = "post_confirmation.zip"  # Path to the Lambda zip file
+
+  source_code_hash = data.archive_file.post_confirmation.output_base64sha256
+}
 
   resource "aws_sns_topic" "sales_notifications" {
     name = "SalesNotifications"
