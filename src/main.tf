@@ -62,7 +62,10 @@ resource "aws_iam_role_policy_attachment" "lambda_dynamoroles" {
   role       = aws_iam_role.lambda_exec.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
 }
-
+resource "aws_iam_role_policy_attachment" "lambda_vpc_policy" {
+  role       = aws_iam_role.lambda_exec.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonVPCFullAccess"
+}
 
 resource "aws_dynamodb_table" "sales" {
   name         = "SalesTable"
@@ -110,7 +113,22 @@ resource "aws_lambda_function" "SalesCollection" {
   handler       = "SaleCollection.lambda_handler"
   runtime       = "python3.12"
 
+  # VPC Configuration for Lambda
+  vpc_config {
+    subnet_ids = [
+    module.vpc.private_subnet_attributes_by_az["private/eu-north-1a"].id,
+    module.vpc.private_subnet_attributes_by_az["private/eu-north-1b"].id
+  ]
+    security_group_ids = [aws_security_group.lambda_sg.id]
+  }
+
   source_code_hash = data.archive_file.SalesCollection.output_base64sha256
 
 
+}
+# Create a security group for Lambda if needed
+resource "aws_security_group" "lambda_sg" {
+  name        = "lambda_sg"
+  description = "Security Group for Lambda function"
+  vpc_id      = module.vpc.vpc_attributes.id
 }
