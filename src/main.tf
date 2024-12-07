@@ -115,14 +115,91 @@ resource "aws_dynamodb_table" "UsersTable" {
   })
 
 }
+resource "aws_dynamodb_table" "BusinessTable" {
+  name         = "BusinessTable"
+  hash_key     = "BusinessName"
+  billing_mode = "PAY_PER_REQUEST"
 
-data "archive_file" "SalesCollection" {
-  type        = "zip"
-  source_file = "SaleCollection.py" # Pointing to Python file in this directory
-  output_path = "SalesCollection_payload.zip"
+  attribute {
+    name = "BusinessName"
+    type = "S"
+  }
+
+  tags = merge(aws_servicecatalogappregistry_application.cloud_project.application_tag, {
+    Name = "Business Table"
+  })
+
 }
+resource "aws_dynamodb_table" "SessionTable" {
+  name         = "SessionTable"
+  hash_key     = "SessionID"
+  billing_mode = "PAY_PER_REQUEST"
+
+  attribute {
+    name = "SessionID"
+    type = "S"
+  }
+
+  tags = merge(aws_servicecatalogappregistry_application.cloud_project.application_tag, {
+    Name = "Session Table"
+  })
+
+}
+  data "archive_file" "SalesCollection" {
+    type        = "zip"
+    source_file = "SaleCollection.py" # Pointing to Python file in this directory
+    output_path = "SalesCollection_payload.zip"
+  }
+  data "archive_file" "SignIn" {
+    type        = "zip"
+    source_file = "SignIn.py" # Pointing to Python file in this directory
+    output_path = "SignIn.zip"
+  }
+  data "archive_file" "SignUpBusiness" {
+    type        = "zip"
+    source_file = "SignUpBusiness.py" # Pointing to Python file in this directory
+    output_path = "SignUpBusiness.zip"
+  }
+    resource "aws_lambda_function" "SignUpBusiness" {
+    filename      = "SignUpBusiness.zip"
+    function_name = "SignUpBusiness"
+    role          = aws_iam_role.lambda_exec.arn
+    handler       = "SignUpBusiness.lambda_handler"
+    runtime       = "python3.12"
+
+    # VPC Configuration for Lambda
+    vpc_config {
+      subnet_ids = [
+      module.vpc.private_subnet_attributes_by_az["private/eu-north-1a"].id,
+      module.vpc.private_subnet_attributes_by_az["private/eu-north-1b"].id
+    ]
+      security_group_ids = [aws_security_group.lambda_sg.id]
+    }
+
+    source_code_hash = data.archive_file.SignUpBusiness.output_base64sha256
 
 
+  }
+    resource "aws_lambda_function" "SignIn" {
+    filename      = "SignIn.zip"
+    function_name = "SignIn"
+    role          = aws_iam_role.lambda_exec.arn
+    handler       = "SignIn.lambda_handler"
+    runtime       = "python3.12"
+
+    # VPC Configuration for Lambda
+    vpc_config {
+      subnet_ids = [
+      module.vpc.private_subnet_attributes_by_az["private/eu-north-1a"].id,
+      module.vpc.private_subnet_attributes_by_az["private/eu-north-1b"].id
+    ]
+      security_group_ids = [aws_security_group.lambda_sg.id]
+    }
+
+    source_code_hash = data.archive_file.SignIn.output_base64sha256
+
+
+  }
   resource "aws_lambda_function" "SalesCollection" {
     filename      = "SalesCollection_payload.zip"
     function_name = "SaleCollection"
@@ -214,12 +291,32 @@ data "archive_file" "SalesCollection" {
 
     source_code_hash = data.archive_file.NotificationLambda.output_base64sha256
   }
+  resource "aws_lambda_function" "SignUp" {
+    filename      = "SignUp.zip"
+    function_name = "SignUpLambda"
+    role          = aws_iam_role.lambda_exec.arn
+    handler       = "SignUp.lambda_handler"
+    runtime       = "python3.12"
+    vpc_config {
+      subnet_ids = [
+        module.vpc.private_subnet_attributes_by_az["private/eu-north-1a"].id,
+        module.vpc.private_subnet_attributes_by_az["private/eu-north-1b"].id
+      ]
+      security_group_ids = [aws_security_group.lambda_sg.id]
+    }
+
+    source_code_hash = data.archive_file.SignUp.output_base64sha256
+  }  
   data "archive_file" "NotificationLambda" {
     type        = "zip"
     source_file = "NotificationLambda.py" # Replace with the correct Python filename
     output_path = "NotificationLambda_payload.zip"
   }
-
+  data "archive_file" "SignUp" {
+    type        = "zip"
+    source_file = "SignUp.py" # Replace with the correct Python filename
+    output_path = "SignUp.zip"
+  }
   resource "aws_iam_role_policy_attachment" "notification_lambda_sns" {
     role       = aws_iam_role.lambda_exec.name
     policy_arn = "arn:aws:iam::aws:policy/AmazonSNSFullAccess"
