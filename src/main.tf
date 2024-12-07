@@ -200,6 +200,27 @@ resource "aws_dynamodb_table" "SessionTable" {
 
 
   }
+    resource "aws_lambda_function" "validateSignIn" {
+    filename      = "validateSignIn.zip"
+    function_name = "validateSignIn"
+    role          = aws_iam_role.lambda_exec.arn
+    handler       = "validateSignIn.lambda_handler"
+    runtime       = "python3.12"
+
+    # VPC Configuration for Lambda
+    vpc_config {
+      subnet_ids = [
+      module.vpc.private_subnet_attributes_by_az["private/eu-north-1a"].id,
+      module.vpc.private_subnet_attributes_by_az["private/eu-north-1b"].id
+    ]
+      security_group_ids = [aws_security_group.lambda_sg.id]
+    }
+
+    source_code_hash = data.archive_file.validateSignIn.output_base64sha256
+
+
+  }
+  
   resource "aws_lambda_function" "SalesCollection" {
     filename      = "SalesCollection_payload.zip"
     function_name = "SaleCollection"
@@ -311,6 +332,11 @@ resource "aws_dynamodb_table" "SessionTable" {
     type        = "zip"
     source_file = "NotificationLambda.py" # Replace with the correct Python filename
     output_path = "NotificationLambda_payload.zip"
+  }
+  data "archive_file" "validateSignIn" {
+    type        = "zip"
+    source_file = "validateSignIn.py" # Replace with the correct Python filename
+    output_path = "validateSignIn.zip"
   }
   data "archive_file" "SignUp" {
     type        = "zip"

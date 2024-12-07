@@ -39,7 +39,8 @@ def lambda_handler(event, context):
                 Item= {
                     'SessionID': sessionKey,
                     'Expiry': Decimal(expiry),
-                    'BusinessName':event['BusinessName']
+                    'BusinessName':event['BusinessName'],
+                    'KEY': event['KEY']
                 }
             )
         else:
