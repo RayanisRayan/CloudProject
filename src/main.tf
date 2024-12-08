@@ -347,6 +347,41 @@ resource "aws_iam_role_policy_attachment" "notification_lambda_sns" {
   role       = aws_iam_role.lambda_exec.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSNSFullAccess"
 }
+resource "aws_iam_role_policy" "lambda_publish_sns" {
+  name = "LambdaPublishToSNSPolicy"
+  role = aws_iam_role.lambda_exec.name
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect   = "Allow",
+        Action   = "sns:Publish",
+        Resource = aws_sns_topic.sales_notifications.arn
+      }
+    ]
+  })
+}
+resource "aws_sns_topic_policy" "sns_policy" {
+  arn = aws_sns_topic.sales_notifications.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect    = "Allow",
+        Principal = { Service = "lambda.amazonaws.com" },
+        Action    = "sns:Publish",
+        Resource  = aws_sns_topic.sales_notifications.arn,
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = aws_lambda_function.NotificationLambda.arn
+          }
+        }
+      }
+    ]
+  })
+}
 resource "aws_iam_role_policy" "invoke_notification_lambda" {
   name = "InvokeNotificationLambdaPolicy"
   role = aws_iam_role.lambda_exec.name
@@ -375,7 +410,20 @@ resource "aws_lambda_permission" "allow_user_signup" {
   function_name = aws_lambda_function.SignUp.function_name
   principal     = "apigateway.amazonaws.com"
 }
+resource "aws_vpc_endpoint" "sns_gateway" {
+  vpc_id            = module.vpc.vpc_attributes.id
+  service_name      = "com.amazonaws.eu-north-1.sns"
+  vpc_endpoint_type = "Interface" # Interface endpoint for API Gateway
 
+  # Extracting only the subnet IDs from the private subnet attributes
+  subnet_ids = [for key, value in module.vpc.private_subnet_attributes_by_az : value["id"]]
+
+  security_group_ids = [aws_security_group.lambda_sg.id]
+  private_dns_enabled = true
+  tags = {
+    Name = "API SNS VPC Endpoint"
+  }
+}
 
 resource "aws_vpc_endpoint" "api_gateway" {
   vpc_id            = module.vpc.vpc_attributes.id

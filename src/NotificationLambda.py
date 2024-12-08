@@ -4,9 +4,10 @@ import json
 sns = boto3.client('sns')
 import os
 SNS_TOPIC_ARN = os.getenv("SNS_TOPIC_ARN")
-
 def lambda_handler(event, context):
     try:
+        print(event)
+        print(SNS_TOPIC_ARN)
         # Extract sale details
         sale_id = event['SaleID']
         user_id = event['UserID']
