@@ -279,39 +279,39 @@ resource "aws_sns_topic" "sales_notifications" {
 resource "aws_lambda_permission" "notification_sns_publish" {
   statement_id  = "AllowSNSPublish"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.NotificationLambda.function_name
+  function_name = aws_lambda_function.SalesCollection.function_name
   principal     = "sns.amazonaws.com"
   source_arn    = aws_sns_topic.sales_notifications.arn
 }
-resource "aws_lambda_permission" "sales_collection_invoke_notification" {
-  statement_id  = "AllowSalesCollectionInvokeNotification"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.NotificationLambda.function_name
-  principal     = "lambda.amazonaws.com"
-  source_arn    = aws_lambda_function.SalesCollection.arn
-}
-resource "aws_lambda_function" "NotificationLambda" {
-  filename      = "NotificationLambda_payload.zip"
-  function_name = "NotificationLambda"
-  role          = aws_iam_role.lambda_exec.arn
-  handler       = "NotificationLambda.lambda_handler"
-  runtime       = "python3.12"
-  environment {
-    variables = {
-      SNS_TOPIC_ARN = aws_sns_topic.sales_notifications.arn
-    }
-  }
+# resource "aws_lambda_permission" "sales_collection_invoke_notification" {
+#   statement_id  = "AllowSalesCollectionInvokeNotification"
+#   action        = "lambda:InvokeFunction"
+#   function_name = aws_lambda_function.NotificationLambda.function_name
+#   principal     = "lambda.amazonaws.com"
+#   source_arn    = aws_lambda_function.SalesCollection.arn
+# }
+# resource "aws_lambda_function" "NotificationLambda" {
+#   filename      = "NotificationLambda_payload.zip"
+#   function_name = "NotificationLambda"
+#   role          = aws_iam_role.lambda_exec.arn
+#   handler       = "NotificationLambda.lambda_handler"
+#   runtime       = "python3.12"
+#   environment {
+#     variables = {
+#       SNS_TOPIC_ARN = aws_sns_topic.sales_notifications.arn
+#     }
+#   }
 
-  vpc_config {
-    subnet_ids = [
-      module.vpc.private_subnet_attributes_by_az["private/eu-north-1a"].id,
-      module.vpc.private_subnet_attributes_by_az["private/eu-north-1b"].id
-    ]
-    security_group_ids = [aws_security_group.lambda_sg.id]
-  }
+#   vpc_config {
+#     subnet_ids = [
+#       module.vpc.private_subnet_attributes_by_az["private/eu-north-1a"].id,
+#       module.vpc.private_subnet_attributes_by_az["private/eu-north-1b"].id
+#     ]
+#     security_group_ids = [aws_security_group.lambda_sg.id]
+#   }
 
-  source_code_hash = data.archive_file.NotificationLambda.output_base64sha256
-}
+#   source_code_hash = data.archive_file.NotificationLambda.output_base64sha256
+# }
 resource "aws_lambda_function" "SignUp" {
   filename      = "SignUp.zip"
   function_name = "SignUpLambda"
@@ -328,11 +328,11 @@ resource "aws_lambda_function" "SignUp" {
 
   source_code_hash = data.archive_file.SignUp.output_base64sha256
 }
-data "archive_file" "NotificationLambda" {
-  type        = "zip"
-  source_file = "NotificationLambda.py" # Replace with the correct Python filename
-  output_path = "NotificationLambda_payload.zip"
-}
+# data "archive_file" "NotificationLambda" {
+#   type        = "zip"
+#   source_file = "NotificationLambda.py" # Replace with the correct Python filename
+#   output_path = "NotificationLambda_payload.zip"
+# }
 data "archive_file" "validateSignIn" {
   type        = "zip"
   source_file = "validateSignIn.py" # Replace with the correct Python filename
@@ -375,27 +375,27 @@ resource "aws_sns_topic_policy" "sns_policy" {
         Resource  = aws_sns_topic.sales_notifications.arn,
         Condition = {
           ArnEquals = {
-            "aws:SourceArn" = aws_lambda_function.NotificationLambda.arn
+            "aws:SourceArn" = aws_lambda_function.SalesCollection.arn
           }
         }
       }
     ]
   })
 }
-resource "aws_iam_role_policy" "invoke_notification_lambda" {
-  name = "InvokeNotificationLambdaPolicy"
-  role = aws_iam_role.lambda_exec.name
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect   = "Allow",
-        Action   = "lambda:InvokeFunction",
-        Resource = aws_lambda_function.NotificationLambda.arn
-      }
-    ]
-  })
-}
+# resource "aws_iam_role_policy" "invoke_notification_lambda" {
+#   name = "InvokeNotificationLambdaPolicy"
+#   role = aws_iam_role.lambda_exec.name
+#   policy = jsonencode({
+#     Version = "2012-10-17",
+#     Statement = [
+#       {
+#         Effect   = "Allow",
+#         Action   = "lambda:InvokeFunction",
+#         Resource = aws_lambda_function.NotificationLambda.arn
+#       }
+#     ]
+#   })
+# }
 
 resource "aws_lambda_permission" "allow_business_signup" {
   statement_id  = "AllowExecutionFromAPIGateway"
