@@ -145,10 +145,31 @@ resource "aws_dynamodb_table" "SessionTable" {
   })
 
 }
+resource "aws_dynamodb_table" "FeedbackTable" {
+  name         = "FeedbackTable"
+  hash_key     = "SaleID"
+  billing_mode = "PAY_PER_REQUEST"
+
+  attribute {
+    name = "SaleID"
+    type = "S"
+  }
+  
+
+  tags = merge(aws_servicecatalogappregistry_application.cloud_project.application_tag, {
+    Name = "Feedback Table"
+  })
+
+}
 data "archive_file" "SalesCollection" {
   type        = "zip"
   source_file = "SaleCollection.py" # Pointing to Python file in this directory
   output_path = "SalesCollection_payload.zip"
+}
+data "archive_file" "Feedback" {
+  type        = "zip"
+  source_file = "Feedback.py" # Pointing to Python file in this directory
+  output_path = "Feedback_payload.zip"
 }
 data "archive_file" "SignIn" {
   type        = "zip"
@@ -238,6 +259,26 @@ resource "aws_lambda_function" "SalesCollection" {
   }
 
   source_code_hash = data.archive_file.SalesCollection.output_base64sha256
+
+
+}
+resource "aws_lambda_function" "Feedback" {
+  filename      = "Feedback_payload.zip"
+  function_name = "Feedback"
+  role          = aws_iam_role.lambda_exec.arn
+  handler       = "Feedback.lambda_handler"
+  runtime       = "python3.12"
+
+  # VPC Configuration for Lambda
+  vpc_config {
+    subnet_ids = [
+      module.vpc.private_subnet_attributes_by_az["private/eu-north-1a"].id,
+      module.vpc.private_subnet_attributes_by_az["private/eu-north-1b"].id
+    ]
+    security_group_ids = [aws_security_group.lambda_sg.id]
+  }
+
+  source_code_hash = data.archive_file.Feedback.output_base64sha256
 
 
 }
