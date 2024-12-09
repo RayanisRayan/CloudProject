@@ -11,18 +11,25 @@ sessions = dynamodb.Table('SessionTable')
 business = dynamodb.Table('BusinessTable')
 
 def lambda_handler(event, context):
-    user_id = event['userName']
-    password = event['userAttributes']['password']
+    try:
+        event2 = json.loads(event['body'])
+    except:
+        return {
+            'statusCode': 422,
+            'body': json.dumps({'message': 'Bad Request', 'error': "no body"})
+        }
+    user_id = event2['userName']
+    password = event2['userAttributes']['password']
     userid = {'UserID':user_id}
     response = table.get_item(Key=userid)
-    busniessResponse = business.get_item(Key ={'BusinessName':str(event['BusinessName'])})
+    busniessResponse = business.get_item(Key ={'BusinessName':str(event2['BusinessName'])})
 
     if not ('Item' in busniessResponse): 
         return {
             'statusCode': 422,
             'body': json.dumps({'message': 'Bad Request', 'error': "No Such Business"})
         } 
-    if busniessResponse["Item"]['KEY'] != event['KEY']:
+    if busniessResponse["Item"]['KEY'] != event2['KEY']:
         return {
             'statusCode': 422,
             'body': json.dumps({'message': 'Bad Request', 'error': "Key Missmatch"})
@@ -39,10 +46,20 @@ def lambda_handler(event, context):
                 Item= {
                     'SessionID': sessionKey,
                     'Expiry': Decimal(expiry),
-                    'BusinessName':event['BusinessName'],
-                    'KEY': event['KEY']
+                    'BusinessName':event2['BusinessName'],
+                    'KEY': event2['KEY']
                 }
             )
+            return {
+                'statusCode': 200,
+                'body': json.dumps({'message': 'User Added','body':json.dumps({
+                    'SessionID': sessionKey,
+                    'Expiry': Decimal(expiry),
+                    'BusinessName':event2['BusinessName'],
+                    'KEY': event2['KEY']
+                })})
+                }
+            
         else:
             return {
             'statusCode': 422,
@@ -55,4 +72,3 @@ def lambda_handler(event, context):
         } 
 
     
-    return event

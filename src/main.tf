@@ -560,5 +560,24 @@ resource "aws_api_gateway_integration" "validation_integration" {
   uri                     = "arn:aws:apigateway:eu-north-1:lambda:path/2015-03-31/functions/${aws_lambda_function.validateSignIn.arn}/invocations" # here give your URI ID 
 }
 
+# Define the API Gateway Deployment
+resource "aws_api_gateway_deployment" "api_deployment" {
+  depends_on = [aws_api_gateway_integration.Busieness_Sign_up_integration]
+  rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
+  description = "Deployment for CloudProject stage"
+  
+}
+
+# Define the API Gateway Stage (optional, auto-created by deployment above)
+resource "aws_api_gateway_stage" "cloud_project_stage" {
+  deployment_id = aws_api_gateway_deployment.api_deployment.id
+  rest_api_id   = aws_api_gateway_rest_api.Project_Gateway.id
+  stage_name    = "CloudProject"
+  description   = "API Stage for the CloudProject deployment"
+  variables = {
+    environment = "production"
+  }
+}
+
 
 # "arn:aws:apigateway:eu-north-1:lambda:path/2015-03-31/functions/arn:aws:lambda:eu-north-1:221082171326:function:SignUpBusiness/invocations

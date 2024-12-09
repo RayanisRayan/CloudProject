@@ -7,8 +7,15 @@ table = dynamodb.Table('UsersTable')
 
 
 def lambda_handler(event, context):
+    try:
+        event2 = json.loads(event['body'])
+    except:
+        return {
+            'statusCode': 422,
+            'body': json.dumps({'message': 'Bad Request', 'error': "no body"})
+        }
     # check if user already exists
-    userid = event['userName']
+    userid = event2['userName']
     userid = {'UserID':userid}
     response = table.get_item(Key=userid)
     print("+++++++++++++++++++\n",response)
@@ -20,9 +27,9 @@ def lambda_handler(event, context):
         }
     
 
-    user_id = event['userName']
-    email = event['userAttributes']['email'] 
-    password = event['userAttributes']['password']   
+    user_id = event2['userName']
+    email = event2['userAttributes']['email'] 
+    password = event2['userAttributes']['password']   
     hashed_password = password
 
 # Save user information in DynamoDB
@@ -33,4 +40,7 @@ def lambda_handler(event, context):
             'password': hashed_password,
         }
     )
-    return event
+    return {
+            'statusCode': 200,
+            'body': json.dumps({'message': 'User Added'})
+        }

@@ -16,15 +16,15 @@
 # table = dynamodb.Table('SalesTable')
 # #TODO: Validate User Exists
 
-# def lambda_handler(event, context):
+# def lambda_handler(event2, context):
 #     # Extract input values
     
 #     try:
 #         sale_id = str(uuid.uuid4())
-#         user_id = int(event['UserID'])
-#         items = event['ItemNames']
-#         sale_amount = Decimal(str(event['SaleAmount']))
-#         time_of_sale = int(event['TimeOfSale'])
+#         user_id = int(event2['UserID'])
+#         items = event2['ItemNames']
+#         sale_amount = Decimal(str(event2['SaleAmount']))
+#         time_of_sale = int(event2['TimeOfSale'])
 #     except Exception as e:
 #         return {
 #             'statusCode': 422,
@@ -63,11 +63,18 @@ table = dynamodb.Table('SalesTable')
 
 def lambda_handler(event, context):
     try:
+        event2 = json.loads(event['body'])
+    except:
+        return {
+            'statusCode': 422,
+            'body': json.dumps({'message': 'Bad Request', 'error': "no body"})
+        }
+    try:
         sale_id = str(uuid.uuid4())
-        user_id = int(event['UserID'])
-        items = event['ItemNames']
-        sale_amount = Decimal(str(event['SaleAmount']))
-        time_of_sale = int(event['TimeOfSale'])
+        user_id = int(event2['UserID'])
+        items = event2['ItemNames']
+        sale_amount = Decimal(str(event2['SaleAmount']))
+        time_of_sale = int(event2['TimeOfSale'])
     except Exception as e:
         return {
             'statusCode': 422,
@@ -85,7 +92,7 @@ def lambda_handler(event, context):
         )
 
         # Notify the Notification Lambda
-        notification_event = {
+        notification_event2 = {
             'SaleID': sale_id,
             'TimeOfSale': time_of_sale,
             'SaleAmount': float(sale_amount),
@@ -95,7 +102,7 @@ def lambda_handler(event, context):
         lambda_client.invoke(
             FunctionName="NotificationLambda",
             InvocationType="Event",  # Async invocation
-            Payload=json.dumps(notification_event)
+            Payload=json.dumps(notification_event2)
         )
         
         return {
