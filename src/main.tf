@@ -444,7 +444,12 @@ resource "aws_lambda_permission" "allow_business_signup" {
   function_name = aws_lambda_function.SignUpBusiness.function_name
   principal     = "apigateway.amazonaws.com"
 }
-
+resource "aws_lambda_permission" "allow_feedback" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.Feedback.function_name
+  principal     = "apigateway.amazonaws.com"
+}
 resource "aws_lambda_permission" "allow_user_signup" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
@@ -619,6 +624,27 @@ resource "aws_api_gateway_stage" "cloud_project_stage" {
     environment = "production"
   }
 }
+# Feedback
+resource "aws_api_gateway_resource" "feedback_resource" {
+  rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
+  parent_id   = aws_api_gateway_rest_api.Project_Gateway.root_resource_id
+  path_part   = "Feedback"
+}
 
+resource "aws_api_gateway_method" "feedback_method" {
+  rest_api_id   = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id   = aws_api_gateway_resource.feedback_resource.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "feedback_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id             = aws_api_gateway_resource.feedback_resource.id
+  http_method             = aws_api_gateway_method.feedback_method.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:eu-north-1:lambda:path/2015-03-31/functions/${aws_lambda_function.Feedback.arn}/invocations" # here give your URI ID 
+}
 
 # "arn:aws:apigateway:eu-north-1:lambda:path/2015-03-31/functions/arn:aws:lambda:eu-north-1:221082171326:function:SignUpBusiness/invocations

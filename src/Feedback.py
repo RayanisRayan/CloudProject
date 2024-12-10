@@ -7,11 +7,12 @@ table = dynamodb.Table('FeedbackTable')
 
 def lambda_handler(event, context):
     try:
-        sale_id = event["SaleID"]
-        Shopping_Experience = event["ShoppingExperience"]
-        Quality_Of_Products = event["QualityOfProducts"]
-        Would_Purchase_Again = event["WouldPurchaseAgain"]
-        Comments = event["Comments"]
+        body = json.loads(event['body'])
+        sale_id = body["SaleID"]
+        Shopping_Experience = body["ShoppingExperience"]
+        Quality_Of_Products = body["QualityOfProducts"]
+        Would_Purchase_Again = body["WouldPurchaseAgain"]
+        Comments = body["Comments"]
     except Exception as e:
         return {
             'statusCode': 422,
