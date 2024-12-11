@@ -1,0 +1,8 @@
+{
+    "SaleID": id,
+    "TimeOfSale": Decimal(time_of_sale),
+    "SaleAmount": Decimal(sale_amount),
+    "ItemNames": {json},
+    "UserID": "String"
+    "BusinessKey":"String"
+}

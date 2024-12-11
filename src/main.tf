@@ -161,6 +161,7 @@ resource "aws_dynamodb_table" "FeedbackTable" {
   })
 
 }
+
 data "archive_file" "SalesCollection" {
   type        = "zip"
   source_file = "SaleCollection.py" # Pointing to Python file in this directory
@@ -646,5 +647,44 @@ resource "aws_api_gateway_integration" "feedback_integration" {
   type                    = "AWS_PROXY"
   uri                     = "arn:aws:apigateway:eu-north-1:lambda:path/2015-03-31/functions/${aws_lambda_function.Feedback.arn}/invocations" # here give your URI ID 
 }
+
+data "archive_file" "fetch_sales" {
+  type        = "zip"
+  source_file = "fetch_sales.py"
+  output_path = "fetch_sales_payload.zip"
+}
+
+resource "aws_lambda_function" "fetch_sales" {
+  filename      = "fetch_sales_payload.zip"
+  function_name = "FetchSales"
+  role          = aws_iam_role.lambda_exec.arn
+  handler       = "fetch_sales.lambda_handler"
+  runtime       = "python3.9"
+
+vpc_config {
+    subnet_ids = [
+      module.vpc.private_subnet_attributes_by_az["private/eu-north-1a"].id,
+      module.vpc.private_subnet_attributes_by_az["private/eu-north-1b"].id
+    ]
+    security_group_ids = [aws_security_group.lambda_sg.id]
+  }
+
+  source_code_hash = data.archive_file.fetch_sales.output_base64sha256
+}
+
+resource "aws_lambda_permission" "fetch_sales_permission" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.fetch_sales.function_name
+  principal     = "apigateway.amazonaws.com"
+}
+
+resource "aws_lambda_permission" "SalesCollection_permission" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.SalesCollection.function_name
+  principal     = "apigateway.amazonaws.com"
+}
+
 
 # "arn:aws:apigateway:eu-north-1:lambda:path/2015-03-31/functions/arn:aws:lambda:eu-north-1:221082171326:function:SignUpBusiness/invocations
