@@ -609,13 +609,13 @@ resource "aws_api_gateway_integration" "validation_integration" {
 
 # Define the API Gateway Deployment
 resource "aws_api_gateway_deployment" "api_deployment" {
-  depends_on = [aws_api_gateway_integration.Busieness_Sign_up_integration]
+  depends_on = [aws_api_gateway_integration.fetch_sales_integration]
   rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
   description = "Deployment for CloudProject stage"
   
 }
 
-# Define the API Gateway Stage (optional, auto-created by deployment above)
+# Define the API Gateway Stage
 resource "aws_api_gateway_stage" "cloud_project_stage" {
   deployment_id = aws_api_gateway_deployment.api_deployment.id
   rest_api_id   = aws_api_gateway_rest_api.Project_Gateway.id
@@ -646,6 +646,28 @@ resource "aws_api_gateway_integration" "feedback_integration" {
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = "arn:aws:apigateway:eu-north-1:lambda:path/2015-03-31/functions/${aws_lambda_function.Feedback.arn}/invocations" # here give your URI ID 
+}
+#
+resource "aws_api_gateway_resource" "fetch_sales_resource" {
+  rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
+  parent_id   = aws_api_gateway_rest_api.Project_Gateway.root_resource_id
+  path_part   = "FetchSales"
+}
+
+resource "aws_api_gateway_method" "fetch_sales_method" {
+  rest_api_id   = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id   = aws_api_gateway_resource.fetch_sales_resource.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "fetch_sales_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id             = aws_api_gateway_resource.fetch_sales_resource.id
+  http_method             = aws_api_gateway_method.fetch_sales_method.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:eu-north-1:lambda:path/2015-03-31/functions/${aws_lambda_function.fetch_sales.arn}/invocations" # here give your URI ID 
 }
 
 data "archive_file" "fetch_sales" {
@@ -679,6 +701,7 @@ resource "aws_lambda_permission" "fetch_sales_permission" {
   principal     = "apigateway.amazonaws.com"
 }
 
+
 resource "aws_lambda_permission" "SalesCollection_permission" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
@@ -688,3 +711,68 @@ resource "aws_lambda_permission" "SalesCollection_permission" {
 
 
 # "arn:aws:apigateway:eu-north-1:lambda:path/2015-03-31/functions/arn:aws:lambda:eu-north-1:221082171326:function:SignUpBusiness/invocations
+
+#api addition for getting business sales
+
+
+resource "aws_instance" "web_server" {
+  ami           = "ami-05edb7c94b324f73c"  # Amazon Linux 2 AMI (update based on region)
+  instance_type = "t3.micro"
+  key_name      = aws_key_pair.my_key_pair.key_name # Replace with your SSH key name
+  subnet_id     = module.vpc.public_subnet_attributes_by_az["eu-north-1a"]["id"]
+
+  security_groups = [aws_security_group.web_sg.id]
+
+  associate_public_ip_address = true  # Ensure the instance gets a public IP
+
+  tags = {
+    Name = "SalesDashboardServer"
+  }
+
+  user_data = file("${path.module}/userdataDashboard.sh")
+}
+
+
+# Security Group to allow HTTP traffic
+resource "aws_security_group" "web_sg" {
+  name        = "web_sg"
+  description = "Allow HTTP traffic"
+  vpc_id      = module.vpc.vpc_attributes.id
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  # Allow public access on HTTP
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Output the public IP of the EC2 instance
+output "instance_public_ip" {
+  value = aws_instance.web_server.public_ip
+}
+
+resource "tls_private_key" "my_key" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
+
+resource "aws_key_pair" "my_key_pair" {
+  key_name   = "my-key"
+  public_key = tls_private_key.my_key.public_key_openssh
+}
+
+resource "local_file" "private_key" {
+  content  = tls_private_key.my_key.private_key_pem
+  filename = "${path.module}/my-key.pem"  # The private key will be saved in your working directory as 'my-key.pem'
+}
+
+output "private_key_path" {
+  value = local_file.private_key.filename
+}

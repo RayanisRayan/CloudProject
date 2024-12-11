@@ -1,7 +1,9 @@
 import boto3
 import json
-from datetime import datetime, timedelta
 import time
+from decimal import Decimal
+from boto3.dynamodb.conditions import Attr
+
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('SalesTable')
 
@@ -17,21 +19,24 @@ def lambda_handler(event, context):
 
     # Query DynamoDB for sales in the last month
     now = time.time()
-    last_month = now - 3600*24*30
+    last_month = Decimal(now - 3600*24*30)
 
     response = table.scan(
-        FilterExpression="businessKey :key AND TimeOfSale >= :last_month",
-        ExpressionAttributeValues={
-            ':key': business_key,
-            ':last_month': int(last_month.timestamp())
-        }
-    )
-
+    FilterExpression=Attr('businessKey').eq(business_key) & Attr('TimeOfSale').gte(last_month))
+    print(response)
     sales_data = response.get('Items', [])
     return {
         'statusCode': 200,
-        'body': json.dumps({
-            'labels': ['Last Month'],
-            'values': [revenue]
-        })
+        "headers": {
+        "Access-Control-Allow-Origin": "*",  # Allow all origins or specify the allowed origin
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",  # Allowed HTTP methods
+        "Access-Control-Allow-Headers": "Content-Type"  # Allowed headers
+        },
+        'body': json.dumps(sales_data, cls=DecimalEncoder)
     }
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)  # Or use int(obj) if you prefer
+        return super(DecimalEncoder, self).default(obj)
