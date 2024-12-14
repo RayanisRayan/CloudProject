@@ -154,7 +154,7 @@ resource "aws_dynamodb_table" "FeedbackTable" {
     name = "SaleID"
     type = "S"
   }
-  
+
 
   tags = merge(aws_servicecatalogappregistry_application.cloud_project.application_tag, {
     Name = "Feedback Table"
@@ -465,7 +465,7 @@ resource "aws_vpc_endpoint" "sns_gateway" {
   # Extracting only the subnet IDs from the private subnet attributes
   subnet_ids = [for key, value in module.vpc.private_subnet_attributes_by_az : value["id"]]
 
-  security_group_ids = [aws_security_group.lambda_sg.id]
+  security_group_ids  = [aws_security_group.lambda_sg.id]
   private_dns_enabled = true
   tags = {
     Name = "API SNS VPC Endpoint"
@@ -612,11 +612,11 @@ resource "aws_api_gateway_deployment" "api_deployment" {
 
   rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
   description = "Deployment for CloudProject stage"
-    triggers = {
-    redeployment_hash = sha1(jsonencode(aws_api_gateway_rest_api.Project_Gateway.body))  
+  triggers = {
+    redeployment_hash = sha1(jsonencode(aws_api_gateway_rest_api.Project_Gateway.body))
   }
 
-   depends_on = [
+  depends_on = [
     aws_api_gateway_integration.Busieness_Sign_up_integration,
     aws_api_gateway_integration.user_Sign_up_integration,
     aws_api_gateway_integration.user_Sign_in_integration,
@@ -695,7 +695,7 @@ resource "aws_lambda_function" "fetch_sales" {
   handler       = "fetch_sales.lambda_handler"
   runtime       = "python3.9"
 
-vpc_config {
+  vpc_config {
     subnet_ids = [
       module.vpc.private_subnet_attributes_by_az["private/eu-north-1a"].id,
       module.vpc.private_subnet_attributes_by_az["private/eu-north-1b"].id
@@ -742,14 +742,14 @@ resource "aws_lambda_permission" "SalesCollection_permission" {
 
 
 resource "aws_instance" "web_server" {
-  ami           = "ami-05edb7c94b324f73c"  # Amazon Linux 2 AMI (update based on region)
+  ami           = "ami-05edb7c94b324f73c" # Amazon Linux 2 AMI (update based on region)
   instance_type = "t3.micro"
   key_name      = aws_key_pair.my_key_pair.key_name # Replace with your SSH key name
   subnet_id     = module.vpc.public_subnet_attributes_by_az["eu-north-1a"]["id"]
 
   security_groups = [aws_security_group.web_sg.id]
 
-  associate_public_ip_address = true  # Ensure the instance gets a public IP
+  associate_public_ip_address = true # Ensure the instance gets a public IP
 
   tags = {
     Name = "SalesDashboardServer"
@@ -768,7 +768,7 @@ resource "aws_security_group" "web_sg" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow public access on HTTP
+    cidr_blocks = ["0.0.0.0/0"] # Allow public access on HTTP
   }
 
   egress {
@@ -796,7 +796,7 @@ resource "aws_key_pair" "my_key_pair" {
 
 resource "local_file" "private_key" {
   content  = tls_private_key.my_key.private_key_pem
-  filename = "${path.module}/my-key.pem"  # The private key will be saved in your working directory as 'my-key.pem'
+  filename = "${path.module}/my-key.pem" # The private key will be saved in your working directory as 'my-key.pem'
 }
 
 output "private_key_path" {
@@ -835,10 +835,10 @@ resource "aws_api_gateway_method" "feedback_options_method" {
 
 # Define a MOCK integration for the OPTIONS method
 resource "aws_api_gateway_integration" "feedback_options_integration" {
-  rest_api_id   = aws_api_gateway_rest_api.Project_Gateway.id
-  resource_id   = aws_api_gateway_resource.feedback_resource.id
-  http_method   = aws_api_gateway_method.feedback_options_method.http_method
-  type          = "MOCK"
+  rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id = aws_api_gateway_resource.feedback_resource.id
+  http_method = aws_api_gateway_method.feedback_options_method.http_method
+  type        = "MOCK"
 
   request_templates = {
     "application/json" = "{\"statusCode\": 200}"
@@ -865,10 +865,10 @@ resource "aws_api_gateway_method_response" "feedback_options_response" {
 
 # Define the integration response for OPTIONS
 resource "aws_api_gateway_integration_response" "feedback_options_integration_response" {
-  rest_api_id   = aws_api_gateway_rest_api.Project_Gateway.id
-  resource_id   = aws_api_gateway_resource.feedback_resource.id
-  http_method   = aws_api_gateway_method.feedback_options_method.http_method
-  status_code   = "200"
+  rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id = aws_api_gateway_resource.feedback_resource.id
+  http_method = aws_api_gateway_method.feedback_options_method.http_method
+  status_code = "200"
 
   response_parameters = {
     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
@@ -877,4 +877,78 @@ resource "aws_api_gateway_integration_response" "feedback_options_integration_re
   }
 
   depends_on = [aws_api_gateway_integration.feedback_options_integration]
+}
+
+resource "aws_api_gateway_method_response" "fetch_sales_response" {
+  rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id = aws_api_gateway_resource.fetch_sales_resource.id
+  http_method = aws_api_gateway_method.fetch_sales_method.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Headers" = true
+  }
+
+  response_models = {
+    "application/json" = "Empty"
+  }
+}
+
+resource "aws_api_gateway_integration_response" "fetch_sales_integration_response" {
+  rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id = aws_api_gateway_resource.fetch_sales_resource.id
+  http_method = aws_api_gateway_method.fetch_sales_method.http_method
+  status_code = aws_api_gateway_method_response.fetch_sales_response.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin" = "'*'"
+  }
+}
+
+resource "aws_api_gateway_method" "options_fetch_sales" {
+  rest_api_id   = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id   = aws_api_gateway_resource.fetch_sales_resource.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_fetch_sales_integration" {
+  rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id = aws_api_gateway_resource.fetch_sales_resource.id
+  http_method = aws_api_gateway_method.options_fetch_sales.http_method
+  type        = "MOCK"
+
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "options_fetch_sales_response" {
+  rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id = aws_api_gateway_resource.fetch_sales_resource.id
+  http_method = aws_api_gateway_method.options_fetch_sales.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true,
+    "method.response.header.Access-Control-Allow-Methods" = true,
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+
+  response_models = {
+    "application/json" = "Empty"
+  }
+}
+
+resource "aws_api_gateway_integration_response" "options_fetch_sales_integration_response" {
+  rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id = aws_api_gateway_resource.fetch_sales_resource.id
+  http_method = aws_api_gateway_method.options_fetch_sales.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,POST'"
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+  }
 }
