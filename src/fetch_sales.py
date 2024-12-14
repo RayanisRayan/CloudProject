@@ -8,8 +8,8 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('SalesTable')
 
 def lambda_handler(event, context):
-    
-    business_key = event.get('queryStringParameters', {}).get('key')
+    body = json.loads(event['body'])
+    business_key = body['KEY']
     print(business_key)
     if not business_key:
         return {

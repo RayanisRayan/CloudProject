@@ -54,7 +54,7 @@ def lambda_handler(event, context):
                 'statusCode': 200,
                 'body': json.dumps({'message': 'User Added','body':json.dumps({
                     'SessionID': sessionKey,
-                    'Expiry': Decimal(expiry),
+                    'Expiry': expiry,
                     'BusinessName':event2['BusinessName'],
                     'KEY': event2['KEY']
                 })})

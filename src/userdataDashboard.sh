@@ -142,7 +142,13 @@ cat <<'EOL' > /usr/share/nginx/html/index.html
       const businessKey = document.getElementById("businessKey").value;
 
       // Fetch data from backend API
-      fetch(`https://121e8hp3j8.execute-api.eu-north-1.amazonaws.com/CloudProject/FetchSales?key=${businessKey}`,{method: 'POST'})
+      fetch('https://121e8hp3j8.execute-api.eu-north-1.amazonaws.com/CloudProject/FetchSales', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ "KEY": businessKey })
+      })
         .then(response => {
           if (!response.ok) {
             throw new Error("Failed to fetch sales data.");

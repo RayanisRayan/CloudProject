@@ -612,6 +612,9 @@ resource "aws_api_gateway_deployment" "api_deployment" {
   depends_on = [aws_api_gateway_integration.fetch_sales_integration]
   rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
   description = "Deployment for CloudProject stage"
+    triggers = {
+    redeployment_hash = sha1(jsonencode(aws_api_gateway_rest_api.Project_Gateway.body))  
+  }
   
 }
 
@@ -698,6 +701,20 @@ resource "aws_lambda_permission" "fetch_sales_permission" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.fetch_sales.function_name
+  principal     = "apigateway.amazonaws.com"
+}
+
+resource "aws_lambda_permission" "Sign_In_permission" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.SignIn.function_name
+  principal     = "apigateway.amazonaws.com"
+}
+
+resource "aws_lambda_permission" "Validate_permission" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.validateSignIn.function_name
   principal     = "apigateway.amazonaws.com"
 }
 
