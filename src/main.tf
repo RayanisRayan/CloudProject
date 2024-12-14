@@ -609,13 +609,22 @@ resource "aws_api_gateway_integration" "validation_integration" {
 
 # Define the API Gateway Deployment
 resource "aws_api_gateway_deployment" "api_deployment" {
-  depends_on = [aws_api_gateway_integration.fetch_sales_integration]
+
   rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
   description = "Deployment for CloudProject stage"
     triggers = {
     redeployment_hash = sha1(jsonencode(aws_api_gateway_rest_api.Project_Gateway.body))  
   }
-  
+
+   depends_on = [
+    aws_api_gateway_integration.Busieness_Sign_up_integration,
+    aws_api_gateway_integration.user_Sign_up_integration,
+    aws_api_gateway_integration.user_Sign_in_integration,
+    aws_api_gateway_integration.sale_collection_integration,
+    aws_api_gateway_integration.validation_integration,
+    aws_api_gateway_integration.feedback_integration,
+    aws_api_gateway_integration.fetch_sales_integration
+  ]
 }
 
 # Define the API Gateway Stage
@@ -792,4 +801,80 @@ resource "local_file" "private_key" {
 
 output "private_key_path" {
   value = local_file.private_key.filename
+}
+
+resource "aws_instance" "feedback_server" {
+  ami           = "ami-05edb7c94b324f73c" # Amazon Linux 2 AMI (update based on your region)
+  instance_type = "t3.micro"
+  key_name      = aws_key_pair.my_key_pair.key_name
+  subnet_id     = module.vpc.public_subnet_attributes_by_az["eu-north-1a"]["id"]
+
+  security_groups = [aws_security_group.web_sg.id]
+
+  associate_public_ip_address = true
+
+  tags = {
+    Name = "FeedbackServer"
+  }
+
+  # Reference the separate user data file
+  user_data = file("${path.module}/userdataFeedback.sh")
+}
+
+output "feedback_server_public_ip" {
+  value = aws_instance.feedback_server.public_ip
+}
+
+# Ensure OPTIONS method exists
+resource "aws_api_gateway_method" "feedback_options_method" {
+  rest_api_id   = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id   = aws_api_gateway_resource.feedback_resource.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+# Define a MOCK integration for the OPTIONS method
+resource "aws_api_gateway_integration" "feedback_options_integration" {
+  rest_api_id   = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id   = aws_api_gateway_resource.feedback_resource.id
+  http_method   = aws_api_gateway_method.feedback_options_method.http_method
+  type          = "MOCK"
+
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+# Define the method response for OPTIONS
+resource "aws_api_gateway_method_response" "feedback_options_response" {
+  rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id = aws_api_gateway_resource.feedback_resource.id
+  http_method = aws_api_gateway_method.feedback_options_method.http_method
+  status_code = "200"
+
+  response_models = {
+    "application/json" = "Empty" # Use the built-in Empty model
+  }
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Headers" = true
+  }
+}
+
+# Define the integration response for OPTIONS
+resource "aws_api_gateway_integration_response" "feedback_options_integration_response" {
+  rest_api_id   = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id   = aws_api_gateway_resource.feedback_resource.id
+  http_method   = aws_api_gateway_method.feedback_options_method.http_method
+  status_code   = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+    "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,POST'"
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+  }
+
+  depends_on = [aws_api_gateway_integration.feedback_options_integration]
 }
