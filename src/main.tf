@@ -82,17 +82,35 @@ resource "aws_dynamodb_table" "sales" {
     type = "S"
   }
 
+  attribute {
+    name = "businessKey"
+    type = "S"  # Add the attribute for businessKey
+  }
+
   tags = merge(aws_servicecatalogappregistry_application.cloud_project.application_tag, {
     Name = "Sales Table"
   })
+
+  # Global Secondary Index for businessKey
   global_secondary_index {
-    name            = "UserIDIndex"
-    hash_key        = "UserID" # The index will be on UserID
-    projection_type = "ALL"    # Include all attributes in the index
+    name            = "businessKey-index"
+    hash_key        = "businessKey"
+    projection_type = "ALL"
+    read_capacity   = 5
+    write_capacity  = 5
+  }
+
+  # Global Secondary Index for UserID (if needed for querying)
+  global_secondary_index {
+    name            = "UserID-index"
+    hash_key        = "UserID"
+    projection_type = "ALL"
     read_capacity   = 5
     write_capacity  = 5
   }
 }
+
+
 
 resource "aws_dynamodb_table" "UsersTable" {
   name         = "UsersTable"
@@ -165,6 +183,11 @@ data "archive_file" "Feedback" {
   type        = "zip"
   source_file = "Feedback.py" # Pointing to Python file in this directory
   output_path = "Feedback_payload.zip"
+}
+data "archive_file" "FeedbackForBusiness" {
+  type        = "zip"
+  source_file = "FeedbackForBusiness.py" # Pointing to Python file in this directory
+  output_path = "FeedbackForBusiness_payload.zip"
 }
 data "archive_file" "SignIn" {
   type        = "zip"
@@ -274,6 +297,26 @@ resource "aws_lambda_function" "Feedback" {
   }
 
   source_code_hash = data.archive_file.Feedback.output_base64sha256
+
+
+}
+resource "aws_lambda_function" "FeedbackForBusiness" {
+  filename      = "FeedbackForBusiness_payload.zip"
+  function_name = "FeedbackForBusiness"
+  role          = aws_iam_role.lambda_exec.arn
+  handler       = "FeedbackForBusiness.lambda_handler"
+  runtime       = "python3.12"
+
+  # VPC Configuration for Lambda
+  vpc_config {
+    subnet_ids = [
+      module.vpc.private_subnet_attributes_by_az["private/eu-north-1a"].id,
+      module.vpc.private_subnet_attributes_by_az["private/eu-north-1b"].id
+    ]
+    security_group_ids = [aws_security_group.lambda_sg.id]
+  }
+
+  source_code_hash = data.archive_file.FeedbackForBusiness.output_base64sha256
 
 
 }
@@ -443,6 +486,12 @@ resource "aws_lambda_permission" "allow_feedback" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.Feedback.function_name
+  principal     = "apigateway.amazonaws.com"
+}
+resource "aws_lambda_permission" "allow_FeedbackForBusiness" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.FeedbackForBusiness.function_name
   principal     = "apigateway.amazonaws.com"
 }
 resource "aws_lambda_permission" "allow_user_signup" {
@@ -617,6 +666,7 @@ resource "aws_api_gateway_deployment" "api_deployment" {
     aws_api_gateway_integration.sale_collection_integration,
     aws_api_gateway_integration.validation_integration,
     aws_api_gateway_integration.feedback_integration,
+    aws_api_gateway_integration.feedbackForBusiness_integration,
     aws_api_gateway_integration.fetch_sales_integration,
     aws_api_gateway_integration.feedback_options_integration,
     aws_api_gateway_integration.options_fetch_sales_integration,
@@ -642,7 +692,25 @@ resource "aws_api_gateway_resource" "feedback_resource" {
   parent_id   = aws_api_gateway_rest_api.Project_Gateway.root_resource_id
   path_part   = "Feedback"
 }
-
+resource "aws_api_gateway_resource" "feedbackForBusiness_resource" {
+  rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
+  parent_id   = aws_api_gateway_rest_api.Project_Gateway.root_resource_id
+  path_part   = "FeedbackForBusiness"
+}
+resource "aws_api_gateway_method" "feedbackForBusiness_method" {
+  rest_api_id   = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id   = aws_api_gateway_resource.feedbackForBusiness_resource.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+resource "aws_api_gateway_integration" "feedbackForBusiness_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.Project_Gateway.id
+  resource_id             = aws_api_gateway_resource.feedbackForBusiness_resource.id
+  http_method             = aws_api_gateway_method.feedbackForBusiness_method.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = "arn:aws:apigateway:eu-north-1:lambda:path/2015-03-31/functions/${aws_lambda_function.FeedbackForBusiness.arn}/invocations" # here give your URI ID 
+}
 resource "aws_api_gateway_method" "feedback_method" {
   rest_api_id   = aws_api_gateway_rest_api.Project_Gateway.id
   resource_id   = aws_api_gateway_resource.feedback_resource.id
