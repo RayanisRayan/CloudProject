@@ -90,36 +90,36 @@ def lambda_handler(event, context):
         )
 
         # Notify the Notification Lambda
-        # notification_event = {
-        #     'SaleID': sale_id,
-        #     'TimeOfSale': time_of_sale,
-        #     'SaleAmount': float(sale_amount),
-        #     'ItemNames': items,
-        #     'UserID': user_id
-        # }
-        # try:
-        # # Extract sale details
-        #     sale_id = event2['SaleID']
-        #     user_id = event2['UserID']
-        #     sale_amount = event2['SaleAmount']
-        #     item_names = event2['ItemNames']
-        #     time_of_sale = event2['TimeOfSale']
-        #     number = event2["PhoneNumber"]
-        #     # Publish to SNS
-        #     message = f"New sale recorded:\nSaleID: {sale_id}\nUserID: {user_id}\nAmount: {sale_amount}\nItems: {item_names}\nTime: {time_of_sale}"
-        #     print("hello")
-        #     sns.publish(
-        #         PhoneNumber="+966580952824",
-        #         Message=message,
-        #         Subject="New Sale Notification"
-        # #     )
+        notification_event = {
+            'SaleID': sale_id,
+            'TimeOfSale': time_of_sale,
+            'SaleAmount': float(sale_amount),
+            'ItemNames': items,
+            'UserID': user_id
+        }
+        try:
+        # Extract sale details
+            print(event2)
+            sale_id = sale_id
+            user_id = event2['UserID']
+            sale_amount = event2['SaleAmount']
+            item_names = event2['ItemNames']
+            number = str(event2["PhoneNumber"])
+            # Publish to SNS
+            message = f"New sale recorded:\nSaleID: {sale_id}\nUserID: {user_id}\nAmount: {sale_amount}\nRate Us: http://13.60.218.222"
+            print("hello")
+            sns.publish(
+                PhoneNumber=number,
+                Message=message,
+                Subject="New Sale Notification"
+            )
 
             
-        # except Exception as e:
-        #     return {
-        #     'statusCode': 500,
-        #     'body': json.dumps({'message': 'Error sending notification', 'error': str(e)})
-        #     }
+        except Exception as e:
+            return {
+            'statusCode': 500,
+            'body': json.dumps({'message': 'Error sending notification', 'error': str(e)})
+            }
         # lambda_client.invoke(
         #     FunctionName="arn:aws:lambda:eu-north-1:971422701265:function:NotificationLambda",
         #     InvocationType="Event",  # Async invocation

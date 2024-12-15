@@ -5,7 +5,7 @@ from decimal import Decimal
 # Initialize DynamoDB resource and table
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('FeedbackTable')
-
+businessTable = dynamodb.Table('SalesTable')
 def lambda_handler(event, context):
     # Define CORS headers
     headers = {
@@ -24,13 +24,35 @@ def lambda_handler(event, context):
     
     try:
         # Parse the request body
+
         body = json.loads(event['body'])
         sale_id = body.get("SaleID")
         shopping_experience = body.get("ShoppingExperience")
         quality_of_products = body.get("QualityOfProducts")
         would_purchase_again = body.get("WouldPurchaseAgain")
         comments = body.get("Comments")
-        
+        print(sale_id)
+        sale = {'SaleID':str(sale_id)}
+        print(11111)
+        try:
+            response = businessTable.get_item(Key={'SaleID': str(sale_id)})
+        except:
+            return {
+                "statusCode": 404,
+                "headers": headers,
+                "body": json.dumps({"error": f"SaleID {sale_id} not found in SalesTable"})
+            }
+
+        print(response)
+        if 'Item' not in response:
+            return {
+                "statusCode": 404,
+                "headers": headers,
+                "body": json.dumps({"error": f"SaleID {sale_id} not found in SalesTable"})
+            }
+
+        business = str(response['Item']['businessKey'])
+        print(22222)
         # Validate required fields
         if not all([sale_id, shopping_experience, quality_of_products, would_purchase_again, comments]):
             return {
@@ -46,7 +68,8 @@ def lambda_handler(event, context):
                 'ShoppingExperience': shopping_experience,
                 'QualityOfProducts': quality_of_products,
                 'WouldPurchaseAgain': str(would_purchase_again),  # Convert boolean to string
-                'Comments': comments
+                'Comments': comments,
+                'businessKey':business
             }
         )
         

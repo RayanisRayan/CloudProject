@@ -70,17 +70,11 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_policy" {
 resource "aws_dynamodb_table" "sales" {
   name         = "SalesTable"
   hash_key     = "SaleID"
-  range_key    = "TimeOfSale"
   billing_mode = "PAY_PER_REQUEST"
 
   attribute {
     name = "SaleID"
     type = "S"
-  }
-
-  attribute {
-    name = "TimeOfSale"
-    type = "N"
   }
 
   attribute {
@@ -623,7 +617,12 @@ resource "aws_api_gateway_deployment" "api_deployment" {
     aws_api_gateway_integration.sale_collection_integration,
     aws_api_gateway_integration.validation_integration,
     aws_api_gateway_integration.feedback_integration,
-    aws_api_gateway_integration.fetch_sales_integration
+    aws_api_gateway_integration.fetch_sales_integration,
+    aws_api_gateway_integration.feedback_options_integration,
+    aws_api_gateway_integration.options_fetch_sales_integration,
+    aws_api_gateway_integration_response.feedback_options_integration_response,
+    aws_api_gateway_integration_response.fetch_sales_integration_response,
+    aws_api_gateway_integration_response.options_fetch_sales_integration_response
   ]
 }
 
