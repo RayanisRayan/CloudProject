@@ -106,7 +106,7 @@ def lambda_handler(event, context):
             item_names = event2['ItemNames']
             number = str(event2["PhoneNumber"])
             # Publish to SNS
-            message = f"New sale recorded:\nSaleID: {sale_id}\nUserID: {user_id}\nAmount: {sale_amount}\nRate Us: http://13.60.218.222"
+            message = f"Thank you for purchasing from us. Please take the sale id and rate us through the link provided.\nSale ID: {sale_id}\nLink: http://13.60.218.222"
             print("hello")
             sns.publish(
                 PhoneNumber=number,
