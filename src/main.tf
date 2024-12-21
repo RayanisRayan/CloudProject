@@ -167,6 +167,19 @@ resource "aws_dynamodb_table" "FeedbackTable" {
     type = "S"
   }
 
+  attribute {
+    name = "businessKey"
+    type = "S"  # Add the attribute for businessKey
+  }
+
+  # Global Secondary Index for businessKey
+  global_secondary_index {
+    name            = "businessKey-index"
+    hash_key        = "businessKey"
+    projection_type = "ALL"
+    read_capacity   = 5
+    write_capacity  = 5
+  }
 
   tags = merge(aws_servicecatalogappregistry_application.cloud_project.application_tag, {
     Name = "Feedback Table"
@@ -538,7 +551,7 @@ resource "aws_api_gateway_rest_api" "Project_Gateway" {
 resource "aws_api_gateway_resource" "api_resource" {
   rest_api_id = aws_api_gateway_rest_api.Project_Gateway.id
   parent_id   = aws_api_gateway_rest_api.Project_Gateway.root_resource_id
-  path_part   = "project"
+  path_part   = "BusinessSignUp"
 }
 
 resource "aws_api_gateway_method" "Business_signUp_method" {
@@ -667,12 +680,7 @@ resource "aws_api_gateway_deployment" "api_deployment" {
     aws_api_gateway_integration.validation_integration,
     aws_api_gateway_integration.feedback_integration,
     aws_api_gateway_integration.feedbackForBusiness_integration,
-    aws_api_gateway_integration.fetch_sales_integration,
-    aws_api_gateway_integration.feedback_options_integration,
-    aws_api_gateway_integration.options_fetch_sales_integration,
-    aws_api_gateway_integration_response.feedback_options_integration_response,
-    aws_api_gateway_integration_response.fetch_sales_integration_response,
-    aws_api_gateway_integration_response.options_fetch_sales_integration_response
+    aws_api_gateway_integration.fetch_sales_integration
   ]
 }
 

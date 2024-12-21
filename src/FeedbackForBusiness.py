@@ -4,7 +4,7 @@ from boto3.dynamodb.conditions import Key
 
 # Initialize DynamoDB resource and table
 dynamodb = boto3.resource('dynamodb')
-businessTable = dynamodb.Table('SalesTable')
+businessTable = dynamodb.Table('FeedbackTable')
 
 def lambda_handler(event, context):
     try:
